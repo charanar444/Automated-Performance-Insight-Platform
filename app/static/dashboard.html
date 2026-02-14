@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Performance Insight Platform</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #f0f4f8;
+            color: #1e293b;
+        }
+
+        header {
+            background: #1e40af;
+            color: white;
+            padding: 20px 40px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        header h1 {
+            font-size: 1.4rem;
+            font-weight: 700;
+        }
+
+        header p {
+            font-size: 0.85rem;
+            opacity: 0.8;
+            margin-top: 4px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 32px 24px;
+        }
+
+        /* ── Upload Card ── */
+        .upload-card {
+            background: white;
+            border-radius: 12px;
+            padding: 32px;
+            box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .upload-card h2 {
+            font-size: 1.1rem;
+            margin-bottom: 8px;
+        }
+
+        .upload-card p {
+            color: #64748b;
+            font-size: 0.88rem;
+            margin-bottom: 20px;
+        }
+
+        .upload-zone {
+            border: 2px dashed #cbd5e1;
+            border-radius: 10px;
+            padding: 32px;
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s;
+            margin-bottom: 16px;
+        }
+
+        .upload-zone:hover {
+            border-color: #1e40af;
+            background: #eff6ff;
+        }
+
+        .upload-zone input {
+            display: none;
+        }
+
+        .upload-zone label {
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            color: #475569;
+            font-size: 0.9rem;
+        }
+
+        .upload-icon {
+            font-size: 2.5rem;
+        }
+
+        #file-name {
+            font-size: 0.85rem;
+            color: #1e40af;
+            font-weight: 600;
+            min-height: 20px;
+            margin-bottom: 12px;
+        }
+
+        .btn-analyze {
+            background: #1e40af;
+            color: white;
+            border: none;
+            padding: 12px 36px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-analyze:hover {
+            background: #1d4ed8;
+        }
+
+        .btn-analyze:disabled {
+            background: #94a3b8;
+            cursor: not-allowed;
+        }
+
+        /* ── Loading & Error ── */
+        #loading {
+            display: none;
+            text-align: center;
+            padding: 24px;
+            color: #1e40af;
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        #error-box {
+            display: none;
+            background: #fef2f2;
+            border: 1px solid #fca5a5;
+            border-radius: 8px;
+            padding: 16px;
+            color: #dc2626;
+            margin-bottom: 24px;
+            font-size: 0.9rem;
+        }
+
+        /* ── Results ── */
+        #results {
+            display: none;
+        }
+
+        .section-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 16px;
+            margin-top: 8px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        /* ── File Info Bar ── */
+        .file-info {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 8px;
+            padding: 12px 20px;
+            font-size: 0.85rem;
+            color: #1e40af;
+            margin-bottom: 28px;
+            display: flex;
+            gap: 24px;
+            flex-wrap: wrap;
+        }
+
+        .file-info span {
+            font-weight: 700;
+        }
+
+        /* ── KPI Cards ── */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        .kpi-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 1px 6px rgba(0, 0, 0, 0.07);
+            border-left: 4px solid #1e40af;
+        }
+
+        .kpi-card.up {
+            border-left-color: #16a34a;
+        }
+
+        .kpi-card.down {
+            border-left-color: #dc2626;
+        }
+
+        .kpi-card.stable {
+            border-left-color: #f59e0b;
+        }
+
+        .kpi-label {
+            font-size: 0.75rem;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-bottom: 6px;
+        }
+
+        .kpi-value {
+            font-size: 1.9rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1;
+        }
+
+        .kpi-change {
+            font-size: 0.82rem;
+            margin-top: 6px;
+            font-weight: 600;
+        }
+
+        .kpi-change.up {
+            color: #16a34a;
+        }
+
+        .kpi-change.down {
+            color: #dc2626;
+        }
+
+        .kpi-change.stable {
+            color: #f59e0b;
+        }
+
+        .kpi-sub {
+            font-size: 0.77rem;
+            color: #94a3b8;
+            margin-top: 4px;
+        }
+
+        /* ── Insights ── */
+        .insights-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        .insight-card {
+            background: white;
+            border-radius: 12px;
+            padding: 18px 20px;
+            box-shadow: 0 1px 6px rgba(0, 0, 0, 0.07);
+            display: flex;
+            gap: 14px;
+            align-items: flex-start;
+        }
+
+        .insight-icon {
+            font-size: 1.5rem;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .insight-text h4 {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 4px;
+        }
+
+        .insight-text p {
+            font-size: 0.82rem;
+            color: #475569;
+            line-height: 1.5;
+        }
+
+        /* ── Charts ── */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(480px, 1fr));
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        .chart-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 1px 6px rgba(0, 0, 0, 0.07);
+        }
+
+        /* ── Download Buttons ── */
+        .download-bar {
+            text-align: center;
+            margin-top: 16px;
+            margin-bottom: 48px;
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .btn-download {
+            color: white;
+            border: none;
+            padding: 14px 32px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .btn-download:hover {
+            opacity: 0.88;
+        }
+
+        .btn-download:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-html {
+            background: #16a34a;
+        }
+
+        .btn-pdf {
+            background: #1e40af;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- ══════════════════ HEADER ══════════════════ -->
+    <header>
+        <div>
+            <h1>📊 Performance Insight Platform</h1>
+            <p>Upload your data. Get instant insights. No analytics team required.</p>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <!-- ══════════════════ UPLOAD CARD ══════════════════ -->
+        <div class="upload-card">
+            <h2>Upload Your Data File</h2>
+            <p>Supports CSV and Excel files. Your data stays private and is never stored.</p>
+
+            <div class="upload-zone">
+                <label for="file-input">
+                    <span class="upload-icon">📁</span>
+                    <span>Click to choose a file or drag and drop</span>
+                    <span style="font-size:0.78rem;color:#94a3b8">CSV or Excel (.xlsx / .xls)</span>
+                </label>
+                <input type="file" id="file-input" accept=".csv,.xlsx,.xls" onchange="handleFileSelect(event)" />
+            </div>
+
+            <div id="file-name">No file selected</div>
+            <button class="btn-analyze" id="analyze-btn" onclick="analyzeFile()" disabled>
+                Analyze Data
+            </button>
+        </div>
+
+        <!-- ══════════════════ LOADING ══════════════════ -->
+        <div id="loading">⏳ Analyzing your data, please wait...</div>
+
+        <!-- ══════════════════ ERROR ══════════════════ -->
+        <div id="error-box"></div>
+
+        <!-- ══════════════════ RESULTS ══════════════════ -->
+        <div id="results">
+
+            <!-- File Info -->
+            <div class="file-info" id="file-info-bar"></div>
+
+            <!-- KPI Cards -->
+            <div class="section-title">📌 Key Performance Indicators</div>
+            <div class="kpi-grid" id="kpi-grid"></div>
+
+            <!-- Insights -->
+            <div class="section-title">💡 Automated Insights</div>
+            <div class="insights-grid" id="insights-grid"></div>
+
+            <!-- Trend Charts -->
+            <div class="section-title">📈 Trend Analysis</div>
+            <div class="charts-grid" id="trend-charts"></div>
+
+            <!-- Category Charts -->
+            <div class="section-title" id="category-title" style="display:none">📊 Category Comparison</div>
+            <div class="charts-grid" id="category-charts"></div>
+
+            <!-- Download Buttons -->
+            <div class="download-bar">
+                <button class="btn-download btn-html" id="btn-html" onclick="downloadHTML()">
+                    ⬇️ Download Report (HTML)
+                </button>
+                <button class="btn-download btn-pdf" id="btn-pdf" onclick="downloadPDF()">
+                    📄 Download Report (PDF)
+                </button>
+            </div>
+
+        </div><!-- end #results -->
+    </div><!-- end .container -->
+
+
+    <!-- ══════════════════ JAVASCRIPT ══════════════════ -->
+    <script>
+        let selectedFile = null;
+        let lastData = null;
+
+        /* ─────────────────────────────────────────
+           File Selection
+        ───────────────────────────────────────── */
+        function handleFileSelect(event) {
+            selectedFile = event.target.files[0];
+            if (selectedFile) {
+                document.getElementById('file-name').textContent = '✅ ' + selectedFile.name;
+                document.getElementById('analyze-btn').disabled = false;
+            }
+        }
+
+        /* ─────────────────────────────────────────
+           Analyze File — calls /upload
+        ───────────────────────────────────────── */
+        async function analyzeFile() {
+            if (!selectedFile) return;
+
+            document.getElementById('results').style.display = 'none';
+            document.getElementById('error-box').style.display = 'none';
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('analyze-btn').disabled = true;
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+
+            try {
+                const response = await fetch('/upload', { method: 'POST', body: formData });
+                const data = await response.json();
+
+                if (!response.ok) {
+                    const msg = Array.isArray(data.detail)
+                        ? data.detail.join(', ')
+                        : (typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail));
+                    throw new Error(msg);
+                }
+
+                lastData = data;
+                renderDashboard(data);
+
+            } catch (err) {
+                const errorBox = document.getElementById('error-box');
+                errorBox.style.display = 'block';
+                errorBox.textContent = '❌ Error: ' + err.message;
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('analyze-btn').disabled = false;
+            }
+        }
+
+        /* ─────────────────────────────────────────
+           Render Full Dashboard
+        ───────────────────────────────────────── */
+        function renderDashboard(data) {
+
+            // ── File Info Bar ──
+            document.getElementById('file-info-bar').innerHTML = `
+      <div>File: <span>${data.filename}</span></div>
+      <div>Rows: <span>${data.rows}</span></div>
+      <div>Metrics: <span>${data.schema.metric_columns.join(', ')}</span></div>
+      <div>Time Column: <span>${data.schema.time_columns[0]}</span></div>
+      ${data.schema.category_columns.length
+                    ? `<div>Categories: <span>${data.schema.category_columns.join(', ')}</span></div>`
+                    : ''}
+    `;
+
+            // ── KPI Cards ──
+            const kpiGrid = document.getElementById('kpi-grid');
+            kpiGrid.innerHTML = '';
+
+            if (data.analytics.category_analysis) {
+                Object.entries(data.analytics.category_analysis).forEach(([category, catData]) => {
+                    Object.entries(catData.summary).forEach(([metric, stats]) => {
+                        const comp = catData.period_comparison[metric];
+                        const pct = comp ? comp.pct_change : 0;
+                        const dir = pct > 5 ? 'up' : pct < -5 ? 'down' : 'stable';
+                        const arrow = dir === 'up' ? '▲' : dir === 'down' ? '▼' : '→';
+                        const sign = pct > 0 ? '+' : '';
+                        kpiGrid.innerHTML += `
+            <div class="kpi-card ${dir}">
+              <div class="kpi-label">${category} · ${metric.replace(/_/g, ' ').toUpperCase()}</div>
+              <div class="kpi-value">${stats.latest.toLocaleString()}</div>
+              <div class="kpi-change ${dir}">${arrow} ${sign}${pct}% vs previous</div>
+              <div class="kpi-sub">Avg: ${stats.average} · Max: ${stats.max} · Min: ${stats.min}</div>
+            </div>`;
+                    });
+                });
+            } else {
+                data.charts.kpi_cards.forEach(kpi => {
+                    const dir = kpi.trend;
+                    const arrow = dir === 'up' ? '▲' : dir === 'down' ? '▼' : '→';
+                    const sign = kpi.pct_change_from_previous > 0 ? '+' : '';
+                    kpiGrid.innerHTML += `
+          <div class="kpi-card ${dir}">
+            <div class="kpi-label">${kpi.label}</div>
+            <div class="kpi-value">${kpi.latest.toLocaleString()}</div>
+            <div class="kpi-change ${dir}">${arrow} ${sign}${kpi.pct_change_from_previous}% vs previous</div>
+            <div class="kpi-sub">Avg: ${kpi.average} · Max: ${kpi.max} · Min: ${kpi.min}</div>
+          </div>`;
+                });
+            }
+
+            // ── Insights ──
+            const insightsGrid = document.getElementById('insights-grid');
+            insightsGrid.innerHTML = '';
+
+            if (data.analytics.category_analysis) {
+                Object.entries(data.analytics.category_analysis).forEach(([category, catData]) => {
+
+                    // Trend insights
+                    Object.entries(catData.trends).forEach(([metric, trend]) => {
+                        const icons = { improving: '📈', declining: '📉', stable: '➡️' };
+                        const icon = icons[trend.direction] || '📊';
+                        insightsGrid.innerHTML += `
+            <div class="insight-card">
+              <div class="insight-icon">${icon}</div>
+              <div class="insight-text">
+                <h4>${category} — ${metric.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</h4>
+                <p>${trend.interpretation}</p>
+              </div>
+            </div>`;
+                    });
+
+                    // Period comparison insights
+                    Object.entries(catData.period_comparison).forEach(([metric, comp]) => {
+                        const icon = comp.direction === 'up' ? '🟢'
+                            : comp.direction === 'down' ? '🔴' : '🟡';
+                        insightsGrid.innerHTML += `
+            <div class="insight-card">
+              <div class="insight-icon">${icon}</div>
+              <div class="insight-text">
+                <h4>${category} — Period Change: ${metric.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</h4>
+                <p>${comp.note}</p>
+              </div>
+            </div>`;
+                    });
+                });
+
+            } else {
+                // Fallback: overall insights
+                Object.entries(data.analytics.trends).forEach(([metric, trend]) => {
+                    const icons = { improving: '📈', declining: '📉', stable: '➡️' };
+                    const icon = icons[trend.direction] || '📊';
+                    insightsGrid.innerHTML += `
+          <div class="insight-card">
+            <div class="insight-icon">${icon}</div>
+            <div class="insight-text">
+              <h4>${metric.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</h4>
+              <p>${trend.interpretation}</p>
+            </div>
+          </div>`;
+                });
+
+                Object.entries(data.analytics.period_comparison).forEach(([metric, comp]) => {
+                    const icon = comp.direction === 'up' ? '🟢'
+                        : comp.direction === 'down' ? '🔴' : '🟡';
+                    insightsGrid.innerHTML += `
+          <div class="insight-card">
+            <div class="insight-icon">${icon}</div>
+            <div class="insight-text">
+              <h4>Period Change: ${metric.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</h4>
+              <p>${comp.note}</p>
+            </div>
+          </div>`;
+                });
+            }
+
+            // Anomaly alerts
+            if (data.analytics.anomalies && data.analytics.anomalies.length > 0) {
+                data.analytics.anomalies.forEach(a => {
+                    insightsGrid.innerHTML += `
+          <div class="insight-card">
+            <div class="insight-icon">⚠️</div>
+            <div class="insight-text">
+              <h4>Anomaly Detected</h4>
+              <p>${a.note}</p>
+            </div>
+          </div>`;
+                });
+            }
+
+            // ── Trend Line Charts ──
+            const trendDiv = document.getElementById('trend-charts');
+            trendDiv.innerHTML = '';
+            data.charts.trend_charts.forEach((chart, i) => {
+                const id = 'trend-chart-' + i;
+                trendDiv.innerHTML += `<div class="chart-card"><div id="${id}"></div></div>`;
+                setTimeout(() => {
+                    Plotly.newPlot(id, chart.chart_json.data, chart.chart_json.layout, { responsive: true });
+                }, 0);
+            });
+
+            // ── Category Bar Charts ──
+            const catDiv = document.getElementById('category-charts');
+            const catTitle = document.getElementById('category-title');
+            catDiv.innerHTML = '';
+
+            if (data.charts.category_charts && data.charts.category_charts.length > 0) {
+                catTitle.style.display = 'block';
+                data.charts.category_charts.forEach((chart, i) => {
+                    const id = 'cat-chart-' + i;
+                    catDiv.innerHTML += `<div class="chart-card"><div id="${id}"></div></div>`;
+                    setTimeout(() => {
+                        Plotly.newPlot(id, chart.chart_json.data, chart.chart_json.layout, { responsive: true });
+                    }, 0);
+                });
+            }
+
+            // Show results and scroll
+            document.getElementById('results').style.display = 'block';
+            document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        /* ─────────────────────────────────────────
+           Download HTML Report
+        ───────────────────────────────────────── */
+        function downloadHTML() {
+            if (!lastData) return;
+
+            const d = lastData;
+            const now = new Date().toLocaleDateString('en-US', {
+                year: 'numeric', month: 'long', day: 'numeric'
+            });
+
+            // KPI rows
+            let kpiRows = '';
+            if (d.analytics.category_analysis) {
+                Object.entries(d.analytics.category_analysis).forEach(([cat, catData]) => {
+                    Object.entries(catData.summary).forEach(([metric, stats]) => {
+                        const comp = catData.period_comparison[metric];
+                        const pct = comp ? comp.pct_change : 0;
+                        kpiRows += `<tr>
+            <td>${cat}</td>
+            <td>${metric.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</td>
+            <td>${stats.latest}</td>
+            <td>${stats.average}</td>
+            <td>${stats.max}</td>
+            <td>${stats.min}</td>
+            <td>${(pct > 0 ? '+' : '') + pct}%</td>
+          </tr>`;
+                    });
+                });
+            } else {
+                d.charts.kpi_cards.forEach(kpi => {
+                    kpiRows += `<tr>
+          <td>—</td>
+          <td>${kpi.label}</td>
+          <td>${kpi.latest}</td>
+          <td>${kpi.average}</td>
+          <td>${kpi.max}</td>
+          <td>${kpi.min}</td>
+          <td>${kpi.pct_change_from_previous}%</td>
+        </tr>`;
+                });
+            }
+
+            // Insight rows
+            let insightRows = '';
+            if (d.analytics.category_analysis) {
+                Object.entries(d.analytics.category_analysis).forEach(([cat, catData]) => {
+                    Object.entries(catData.trends).forEach(([metric, trend]) => {
+                        const icon = trend.direction === 'improving' ? '📈'
+                            : trend.direction === 'declining' ? '📉' : '➡️';
+                        insightRows += `<tr>
+            <td>${icon} ${cat}</td>
+            <td>${metric.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</td>
+            <td><strong>${trend.direction.toUpperCase()}</strong></td>
+            <td>${trend.interpretation}</td>
+          </tr>`;
+                    });
+                });
+            }
+
+            const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Performance Report — ${d.filename}</title>
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; max-width: 900px; margin: 40px auto; color: #1e293b; padding: 0 24px; }
+    h1   { color: #1e40af; margin-bottom: 4px; }
+    h2   { color: #1e40af; margin-top: 36px; margin-bottom: 12px; border-bottom: 2px solid #e2e8f0; padding-bottom: 6px; }
+    .meta { color: #64748b; font-size: 0.88rem; margin-bottom: 32px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 24px; font-size: 0.88rem; }
+    th    { background: #1e40af; color: white; padding: 10px 12px; text-align: left; }
+    td    { padding: 9px 12px; border-bottom: 1px solid #e2e8f0; }
+    tr:nth-child(even) td { background: #f8fafc; }
+    .footer { margin-top: 48px; font-size: 0.78rem; color: #94a3b8; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 16px; }
+  </style>
+</head>
+<body>
+  <h1>📊 Performance Insight Report</h1>
+  <div class="meta">
+    File: <strong>${d.filename}</strong> &nbsp;|&nbsp;
+    Rows: <strong>${d.rows}</strong> &nbsp;|&nbsp;
+    Generated: <strong>${now}</strong>
+  </div>
+  <h2>📌 Key Performance Indicators</h2>
+  <table>
+    <thead><tr>
+      <th>Category</th><th>Metric</th><th>Latest</th>
+      <th>Average</th><th>Max</th><th>Min</th><th>vs Previous</th>
+    </tr></thead>
+    <tbody>${kpiRows}</tbody>
+  </table>
+  <h2>💡 Automated Insights</h2>
+  <table>
+    <thead><tr>
+      <th>Category</th><th>Metric</th><th>Trend</th><th>Interpretation</th>
+    </tr></thead>
+    <tbody>${insightRows}</tbody>
+  </table>
+  <div class="footer">
+    Generated by Automated Performance Insight Platform · Chicago Education Advocacy Cooperative (ChiEAC)
+  </div>
+</body>
+</html>`;
+
+            const blob = new Blob([html], { type: 'text/html; charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `performance_report_${d.filename.replace('.csv', '').replace('.xlsx', '')}`.replace(' ', '_') + '.html';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        /* ─────────────────────────────────────────
+           Download PDF Report — calls /report
+        ───────────────────────────────────────── */
+        async function downloadPDF() {
+            if (!selectedFile) return;
+
+            const btn = document.getElementById('btn-pdf');
+            btn.textContent = '⏳ Generating PDF...';
+            btn.disabled = true;
+
+            try {
+                const formData = new FormData();
+                formData.append('file', selectedFile);
+
+                const response = await fetch('/report', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.detail || 'PDF generation failed');
+                }
+
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `report_${selectedFile.name.replace('.csv', '').replace('.xlsx', '')}.pdf`;
+                a.click();
+                URL.revokeObjectURL(url);
+
+            } catch (err) {
+                const errorBox = document.getElementById('error-box');
+                errorBox.style.display = 'block';
+                errorBox.textContent = '❌ PDF Error: ' + err.message;
+                errorBox.scrollIntoView({ behavior: 'smooth' });
+            } finally {
+                btn.textContent = '📄 Download Report (PDF)';
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+
+</html>
